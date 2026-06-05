@@ -30,3 +30,10 @@
 *.exe
 *.out
 *.app
+/.vs/OpenGL_Learning_Project.slnx/v18
+/.vs/OpenGL_Learning_Project.slnx
+*.vcxproj
+OpenGL_Learning_Project/OpenGL_Learning_Project.vcxproj.filters
+/OpenGL_Learning_Project/x64
+OpenGL_Learning_Project/OpenGL_Learning_Project.vcxproj.user
+x64/Debug/OpenGL_Learning_Project.pdb
