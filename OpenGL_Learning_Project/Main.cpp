@@ -1,6 +1,7 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <iostream>
+#include "stb_image.h"
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void window_position_callback(GLFWwindow* window, int xPos, int yPos);
@@ -8,21 +9,41 @@ void processInput(GLFWwindow* window);
 void compileShaderAndLogErrors(unsigned int shaderId, const char* errMsgPrefix, const char* successMsg);
 
 // the input to the shader can be named anything, we called it aPos.
-// the ouput always has to be called gl_Position and is always a vec4
+// the ouput always has to be called gl_Position and is always a vec4.
+// we have 3 vertex attributes (location=X).
+// we also have 2 outputs (ourColor and TexCoord) that are used only for forwarding the
+// vertex attributes aColor and aTexCoord into the next shader, which is the fragment shader.
 const char* vertexShaderSource = 
     "#version 330 core\n"
     "layout (location = 0) in vec3 aPos;\n"
+    "layout(location = 1) in vec3 aColor;\n"
+    "layout(location = 2) in vec2 aTexCoord;\n"
+    "\n"
+    "out vec3 ourColor;\n"
+    "out vec2 TexCoord;\n"
+    "\n"
     "void main()\n"
     "{\n"
+    "   ourColor = aColor;\n"
+    "   TexCoord = aTexCoord;\n"
     "   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
     "}\0";
 
 const char* fragmentShaderSource =
     "#version 330 core\n"
     "out vec4 FragColor;\n"
+    "\n"
+    "in vec3 ourColor;\n"
+    "in vec2 TexCoord;\n"
+    "\n"
+    "uniform sampler2D ourTexture;\n"
+    "\n"
     "void main()\n"
     "{\n"
-    "    FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n"
+    "    // the following line does glorious vertex coloring:\n"
+    "    // FragColor = vec4(ourColor.r, ourColor.g, ourColor.b, 1.0f);\n"
+    "\n"
+    "    FragColor = texture(ourTexture, TexCoord);"
     "}\0";
 
 int main()
@@ -69,13 +90,14 @@ int main()
 
     // rendering stuff initialization before the rendering loop -----------------------------------------
     
-    // 4 vertices for 2 triangles
+    // 4 vertices for 2 triangles. also has vertex colors and texture coordinates
     float vertices[] = {
-         0.5f,  0.5f, 0.0f,  // top right
-         0.5f, -0.5f, 0.0f,  // bottom right
-        -0.5f, -0.5f, 0.0f,  // bottom left
-        -0.5f,  0.5f, 0.0f   // top left 
-        };
+        // positions          // colors           // texture coords
+         0.5f,  0.5f, 0.0f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f,   // top right
+         0.5f, -0.5f, 0.0f,   0.0f, 1.0f, 0.0f,   1.0f, 0.0f,   // bottom right
+        -0.5f, -0.5f, 0.0f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f,   // bottom left
+        -0.5f,  0.5f, 0.0f,   1.0f, 1.0f, 0.0f,   0.0f, 1.0f    // top left 
+    };
 
     unsigned int indices[] = {  // note that we start from 0!
         0, 1, 3,   // first triangle
@@ -133,26 +155,31 @@ int main()
     // to reuse 'em)
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
 
-    // Tell the VAO how to interpret the data in the VBO.
-    // Right now we are just saying that the data in the VBO is interpreted as 3 consecutive
-    // floats that make up 1 vertex attribute - the position. (location=0) - see the vertex shader
-    // If we wanted to, we could also configure a 2nd vertex attribute (location=1)
-    //    that would contain for example 2 floats and would represent the uv coordinates.
+    // Tell the VAO how to interpret the data in the VBO via glVertexAttribPointer:
     // 
-    // parameters explained (in order):
+    // glVertexAttribPointer parameters explained (in order):
     //   0 - which vertex attribute we are configuring. Here it's location=0
     //   3 - size of the vertex attribute (how many "things" it consists of)
     //   GL_FLOAT - data type of each of those "things". Here we said "we have 3 floats"
     //   GL_FALSE - if we want the data to be normalized. Idk what that means, not important rn
     //   3 * sizeof(float - the STRIDE. Tells us how many bytes to hop in order to find the next 
-    //       vertex attribute. We have 3 floats and each has a sizeof 4 bytes. So hop 12 bytes.
+    //       vertex attribute.
     //   (void*)0 - kinda weird but essentially says the offset where the attribute starts. 
-    //   As it's the 1st attribute it starts at 0. If we had for example a 2nd attribute that'd be
-    //       2 floats, it's offset would be (void*)12. 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-    
+    //   Start offset in bytes of the attribute
+    //
+    // vertex positions
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0); // just turns the above on
-
+    //
+    // vertex colors
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+    //
+    // uv's
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
+    glEnableVertexAttribArray(2);
+    
+    
     // uploading data to the VBO and EBO -------------------------------------------------------------------
 
     // a.k.a uploading the vertex data and the index data
@@ -211,6 +238,33 @@ int main()
 
 
 
+    // texture stuff ------------------------------------------------------------------------------
+
+    // load texture image into the data array
+    int width, height, nrChannels;
+    unsigned char* data = stbi_load("container.jpg", &width, &height, &nrChannels, 0);
+
+    // create the texture object
+    unsigned int texture;
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
+
+    // copy the data into the texture.
+    // more info about this long ahh function: https://learnopengl.com/Getting-started/Textures
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+    glGenerateMipmap(GL_TEXTURE_2D);
+
+    // since we copied the data, we can free the resource
+    stbi_image_free(data);
+
+    // settings for the currently bound texture 
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+
     // rendering loop ---------------------------------------------------------------------------------
     while (!glfwWindowShouldClose(window))
     { 
@@ -224,8 +278,8 @@ int main()
         // glDrawArrays(GL_TRIANGLES, 0, 3);
 
         // draw polygons or wireframe?
-        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-        //glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
