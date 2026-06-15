@@ -2,6 +2,11 @@
 #include <GLFW/glfw3.h>
 #include <iostream>
 #include "stb_image.h"
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
+using namespace glm;
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void window_position_callback(GLFWwindow* window, int xPos, int yPos);
@@ -22,11 +27,13 @@ const char* vertexShaderSource =
     "out vec3 ourColor;\n"
     "out vec2 TexCoord;\n"
     "\n"
+    "uniform mat4 transform;\n"
+    "\n"
     "void main()\n"
     "{\n"
     "   ourColor = aColor;\n"
     "   TexCoord = aTexCoord;\n"
-    "   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
+    "   gl_Position = transform * vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
     "}\0";
 
 const char* fragmentShaderSource =
@@ -238,7 +245,7 @@ int main()
 
 
 
-    // texture stuff ------------------------------------------------------------------------------
+    // texture stuff ---------------------------------------------------------------------------------
 
     // load texture image into the data array
     int width, height, nrChannels;
@@ -265,6 +272,13 @@ int main()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
 
+    // transformations stuff --------------------------------------------------------------------------
+
+    // we only get the matrix' uniform. everything else is done in the render loop because 
+    // we change the transform every frame
+    unsigned int transformLoc = glGetUniformLocation(shaderProgram, "transform");
+
+
     // rendering loop ---------------------------------------------------------------------------------
     while (!glfwWindowShouldClose(window))
     { 
@@ -277,9 +291,20 @@ int main()
         glClear(GL_COLOR_BUFFER_BIT);
         // glDrawArrays(GL_TRIANGLES, 0, 3);
 
+        // transform. although this particular effect we're achieving could also be done
+        // in the vertex shader, the stuff here comes from the cpu and thus could be driven
+        // for example by user input
+        mat4 trans = mat4(1.0f);
+        trans = translate(trans, vec3(sin((float)glfwGetTime() * 3.147) * 0.5, 0.0, 0.0));
+        trans = rotate(trans, radians(45.0f), vec3(0.0, 0.0, 1.0));
+        trans = scale(trans, vec3(0.5, 0.5, 0.5));
+        glUniformMatrix4fv(transformLoc, 1, GL_FALSE, value_ptr(trans));
+
         // draw polygons or wireframe?
         //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+
 
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
