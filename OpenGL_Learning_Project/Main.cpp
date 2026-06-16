@@ -5,6 +5,9 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_opengl3.h"
 
 using namespace glm;
 
@@ -12,6 +15,7 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void window_position_callback(GLFWwindow* window, int xPos, int yPos);
 void processInput(GLFWwindow* window);
 void compileShaderAndLogErrors(unsigned int shaderId, const char* errMsgPrefix, const char* successMsg);
+void ImGuiSetup(GLFWwindow* window);
 
 // the input to the shader can be named anything, we called it aPos.
 // the ouput always has to be called gl_Position and is always a vec4.
@@ -75,7 +79,8 @@ int main()
     }
     glfwMakeContextCurrent(window);
 
-    
+    ImGuiSetup(window);
+
     // This just tells GLAD what is the address of the function 
     // (called glfwGetProcAddress) which gets all the addresses
     // of the openGL functions of the GPU driver. 
@@ -149,6 +154,9 @@ int main()
     //
     // NOTE: If we had 2 objects whose vertices and indices would be stored in different VBOs and EBOs,
     // then in the rendering loop we'd have to switch the VAO every time we were drawing a different object.
+    //
+    // NOTE 2: the function name is a bit of a misnomer. its called bindVertexArray even though we're binding
+    // a vertex attribute object
     glBindVertexArray(VAO);
     
 
@@ -283,7 +291,16 @@ int main()
     while (!glfwWindowShouldClose(window))
     { 
         // input
+        glfwPollEvents();         // poll events checks key presses, window resize/move, etc.
         processInput(window);
+
+        // imgui start
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+        ImGui::ShowDemoWindow(); // Show demo window! :)
+
+        
 
         // do all the rendering here
         // ...
@@ -291,17 +308,31 @@ int main()
         glClear(GL_COLOR_BUFFER_BIT);
         // glDrawArrays(GL_TRIANGLES, 0, 3);
 
-        // transform. although this particular effect we're achieving could also be done
-        // in the vertex shader, the stuff here comes from the cpu and thus could be driven
-        // for example by user input
-        mat4 trans = mat4(1.0f);
-        trans = translate(trans, vec3(sin((float)glfwGetTime() * 3.147) * 0.5, 0.0, 0.0));
-        trans = rotate(trans, radians(45.0f), vec3(0.0, 0.0, 1.0));
-        trans = scale(trans, vec3(0.5, 0.5, 0.5));
-        glUniformMatrix4fv(transformLoc, 1, GL_FALSE, value_ptr(trans));
+        
+        // create a model matrix that does the following thing:
+        //  - model scale stays unchanged
+        //  - the model is rotated 90 degrees about the x axis
+        //  - it's world space position shall be 0, 0, 0 (so unchanged)
+        mat4 modelMatrix = mat4(1.0);
+        modelMatrix = rotate(modelMatrix, radians(-90.0f), vec3(1.0f, 0.0f, 0.0f));
+
+        // view matrix aka camera matrix. it says what the position transform of the camera is
+        mat4 viewMatrix = mat4(1.0);
+        viewMatrix = translate(viewMatrix, vec3(0.0f, -1.0f, -5.0f));
+
+        // projection matrix
+        mat4 projectionMatrix = mat4(1.0);
+        projectionMatrix = perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 100.0f);
+
+
+        mat4 finalTransMatrix = mat4(1.0f);
+
+        finalTransMatrix = projectionMatrix * viewMatrix * modelMatrix;
+
+        glUniformMatrix4fv(transformLoc, 1, GL_FALSE, value_ptr(finalTransMatrix));
 
         // draw polygons or wireframe?
-        //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
 
@@ -309,8 +340,13 @@ int main()
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
         // post rendering stuff
-        glfwPollEvents();         // poll events checks key presses, window resize/move, etc.
+
+        // imgui end
+        ImGui::Render();
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
         glfwSwapBuffers(window);
+
     }
 
     glfwTerminate();
@@ -351,4 +387,17 @@ void compileShaderAndLogErrors(unsigned int shaderId, const char* errMsgPrefix, 
     else {
         std::cout << successMsg << std::endl;
     }
+}
+
+void ImGuiSetup(GLFWwindow* window) {
+    // Setup Dear ImGui context
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO();
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+
+    // Setup Platform/Renderer backends
+    ImGui_ImplGlfw_InitForOpenGL(window, true);          // Second param install_callback=true will install GLFW callbacks and chain to existing ones.
+    ImGui_ImplOpenGL3_Init();
 }
