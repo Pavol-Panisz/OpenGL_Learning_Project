@@ -286,6 +286,15 @@ int main()
     // we change the transform every frame
     unsigned int transformLoc = glGetUniformLocation(shaderProgram, "transform");
 
+    // stuff used in the rendering loop for moving/rotating/scaling in the scene
+    float xCamPos = 0.0; 
+    float yCamPos = -1.0;
+    float zCamPos = -5.0;
+    float xModelRot = -90.0;
+    float yModelRot = 0.0;
+    float zModelRot = 0.0;
+
+
 
     // rendering loop ---------------------------------------------------------------------------------
     while (!glfwWindowShouldClose(window))
@@ -298,8 +307,17 @@ int main()
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
-        ImGui::ShowDemoWindow(); // Show demo window! :)
-
+        
+        ImGui::Begin("Settings");
+        ImGui::SliderFloat("xCamPos", &xCamPos, -5.0f, 5.0f);
+        ImGui::SliderFloat("yCamPos", &yCamPos, -5.0f, 5.0f);
+        ImGui::SliderFloat("zCamPos", &zCamPos, -5.0f, 5.0f);
+        ImGui::Spacing();
+        ImGui::SliderFloat("xModelRot", &xModelRot, -180.0f, 180.0f);
+        ImGui::SliderFloat("yModelRot", &yModelRot, -180.0f, 180.0f);
+        ImGui::SliderFloat("zModelRot", &zModelRot, -180.0f, 180.0f);
+        ImGui::Spacing();
+        ImGui::End();
         
 
         // do all the rendering here
@@ -314,11 +332,13 @@ int main()
         //  - the model is rotated 90 degrees about the x axis
         //  - it's world space position shall be 0, 0, 0 (so unchanged)
         mat4 modelMatrix = mat4(1.0);
-        modelMatrix = rotate(modelMatrix, radians(-90.0f), vec3(1.0f, 0.0f, 0.0f));
+        modelMatrix = rotate(modelMatrix, radians(xModelRot), vec3(1.0f, 0.0f, 0.0f));
+        modelMatrix = rotate(modelMatrix, radians(yModelRot), vec3(0.0f, 1.0f, 0.0f));
+        modelMatrix = rotate(modelMatrix, radians(zModelRot), vec3(0.0f, 0.0f, 1.0f));
 
         // view matrix aka camera matrix. it says what the position transform of the camera is
         mat4 viewMatrix = mat4(1.0);
-        viewMatrix = translate(viewMatrix, vec3(0.0f, -1.0f, -5.0f));
+        viewMatrix = translate(viewMatrix, vec3(xCamPos, yCamPos, zCamPos));
 
         // projection matrix
         mat4 projectionMatrix = mat4(1.0);
@@ -340,9 +360,9 @@ int main()
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
         // post rendering stuff
+        ImGui::Render();
 
         // imgui end
-        ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
         glfwSwapBuffers(window);
