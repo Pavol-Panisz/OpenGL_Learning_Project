@@ -102,19 +102,73 @@ int main()
 
     // rendering stuff initialization before the rendering loop -----------------------------------------
     
-    // 4 vertices for 2 triangles. also has vertex colors and texture coordinates
+    // 3d cube
+    // 3d cube
     float vertices[] = {
-        // positions          // colors           // texture coords
-         0.5f,  0.5f, 0.0f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f,   // top right
-         0.5f, -0.5f, 0.0f,   0.0f, 1.0f, 0.0f,   1.0f, 0.0f,   // bottom right
-        -0.5f, -0.5f, 0.0f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f,   // bottom left
-        -0.5f,  0.5f, 0.0f,   1.0f, 1.0f, 0.0f,   0.0f, 1.0f    // top left 
+        // positions           // colors           // texture coords
+
+        // front face
+         0.5f,  0.5f,  0.5f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f,   // top right
+         0.5f, -0.5f,  0.5f,   0.0f, 1.0f, 0.0f,   1.0f, 0.0f,   // bottom right
+        -0.5f, -0.5f,  0.5f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f,   // bottom left
+        -0.5f,  0.5f,  0.5f,   1.0f, 1.0f, 0.0f,   0.0f, 1.0f,   // top left
+
+        // back face
+         0.5f,  0.5f, -0.5f,   1.0f, 0.0f, 1.0f,   0.0f, 1.0f,   // top right
+         0.5f, -0.5f, -0.5f,   0.0f, 1.0f, 1.0f,   0.0f, 0.0f,   // bottom right
+        -0.5f, -0.5f, -0.5f,   1.0f, 1.0f, 1.0f,   1.0f, 0.0f,   // bottom left
+        -0.5f,  0.5f, -0.5f,   0.5f, 0.5f, 0.5f,   1.0f, 1.0f,   // top left
+
+        // left face
+        -0.5f,  0.5f,  0.5f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f,   // top right
+        -0.5f, -0.5f,  0.5f,   0.0f, 1.0f, 0.0f,   1.0f, 0.0f,   // bottom right
+        -0.5f, -0.5f, -0.5f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f,   // bottom left
+        -0.5f,  0.5f, -0.5f,   1.0f, 1.0f, 0.0f,   0.0f, 1.0f,   // top left
+
+        // right face
+         0.5f,  0.5f, -0.5f,   1.0f, 0.0f, 1.0f,   1.0f, 1.0f,   // top right
+         0.5f, -0.5f, -0.5f,   0.0f, 1.0f, 1.0f,   1.0f, 0.0f,   // bottom right
+         0.5f, -0.5f,  0.5f,   1.0f, 1.0f, 1.0f,   0.0f, 0.0f,   // bottom left
+         0.5f,  0.5f,  0.5f,   0.5f, 0.5f, 0.5f,   0.0f, 1.0f,   // top left
+
+         // top face
+          0.5f,  0.5f, -0.5f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f,   // top right
+          0.5f,  0.5f,  0.5f,   0.0f, 1.0f, 0.0f,   1.0f, 0.0f,   // bottom right
+         -0.5f,  0.5f,  0.5f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f,   // bottom left
+         -0.5f,  0.5f, -0.5f,   1.0f, 1.0f, 0.0f,   0.0f, 1.0f,   // top left
+
+         // bottom face
+          0.5f, -0.5f,  0.5f,   1.0f, 0.0f, 1.0f,   1.0f, 1.0f,   // top right
+          0.5f, -0.5f, -0.5f,   0.0f, 1.0f, 1.0f,   1.0f, 0.0f,   // bottom right
+         -0.5f, -0.5f, -0.5f,   1.0f, 1.0f, 1.0f,   0.0f, 0.0f,   // bottom left
+         -0.5f, -0.5f,  0.5f,   0.5f, 0.5f, 0.5f,   0.0f, 1.0f    // top left
     };
 
-    unsigned int indices[] = {  // note that we start from 0!
-        0, 1, 3,   // first triangle
-        1, 2, 3    // second triangle
-        };
+    unsigned int indices[] = {
+        // front face
+         0,  3,  1,
+         1,  3,  2,
+
+         // back face
+          4,  5,  7,
+          5,  6,  7,
+
+          // left face
+           8, 11,  9,
+           9, 11, 10,
+
+           // right face
+           12, 15, 13,
+           13, 15, 14,
+
+           // top face
+           16, 19, 17,
+           17, 19, 18,
+
+           // bottom face
+           20, 23, 21,
+           21, 23, 22
+    };
 
     // Preparing the VBO, EBO and VAO --------------------------------------------------------------------
 
@@ -286,15 +340,17 @@ int main()
     // we change the transform every frame
     unsigned int transformLoc = glGetUniformLocation(shaderProgram, "transform");
 
-    // stuff used in the rendering loop for moving/rotating/scaling in the scene
+    // IMGUI-editable
     float xCamPos = 0.0; 
     float yCamPos = -1.0;
     float zCamPos = -5.0;
     float xModelRot = -90.0;
     float yModelRot = 0.0;
     float zModelRot = 0.0;
+    float bgColor[3] = { 0.91f, 0.55f, 0.1 };
 
-
+    // enable depth testing
+    glEnable(GL_DEPTH_TEST);
 
     // rendering loop ---------------------------------------------------------------------------------
     while (!glfwWindowShouldClose(window))
@@ -317,13 +373,14 @@ int main()
         ImGui::SliderFloat("yModelRot", &yModelRot, -180.0f, 180.0f);
         ImGui::SliderFloat("zModelRot", &zModelRot, -180.0f, 180.0f);
         ImGui::Spacing();
+        ImGui::ColorEdit3("Background", bgColor);
         ImGui::End();
         
 
         // do all the rendering here
         // ...
-        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
+        glClearColor(bgColor[0], bgColor[1], bgColor[2], 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         // glDrawArrays(GL_TRIANGLES, 0, 3);
 
         
@@ -357,7 +414,7 @@ int main()
 
 
 
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
 
         // post rendering stuff
         ImGui::Render();
