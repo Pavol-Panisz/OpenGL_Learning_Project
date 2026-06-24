@@ -16,7 +16,7 @@ void window_position_callback(GLFWwindow* window, int xPos, int yPos);
 void processInput(GLFWwindow* window);
 void compileShaderAndLogErrors(unsigned int shaderId, const char* errMsgPrefix, const char* successMsg);
 void ImGuiSetup(GLFWwindow* window);
-
+    
 // the input to the shader can be named anything, we called it aPos.
 // the ouput always has to be called gl_Position and is always a vec4.
 // we have 3 vertex attributes (location=X).
